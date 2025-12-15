@@ -1,0 +1,103 @@
+# Copyright (c) 2025 ADBC Drivers Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+csharp/src/AssemblyInfo.cs
+csharp/src/Auth/DatabricksOAuthGrantType.cs
+csharp/src/Auth/JwtTokenDecoder.cs
+csharp/src/Auth/MandatoryTokenExchangeDelegatingHandler.cs
+csharp/src/Auth/OAuthClientCredentialsProvider.cs
+csharp/src/Auth/OAuthDelegatingHandler.cs
+csharp/src/Auth/StaticBearerTokenHandler.cs
+csharp/src/Auth/TokenExchangeClient.cs
+csharp/src/Auth/TokenRefreshDelegatingHandler.cs
+csharp/src/CustomLZ4DecoderStream.cs
+csharp/src/CustomLZ4FrameReader.cs
+csharp/src/DatabricksConfiguration.cs
+csharp/src/DatabricksConnection.cs
+csharp/src/DatabricksDatabase.cs
+csharp/src/DatabricksDriver.cs
+csharp/src/DatabricksException.cs
+csharp/src/DatabricksParameters.cs
+csharp/src/DatabricksSchemaParser.cs
+csharp/src/DatabricksStatement.cs
+csharp/src/FeatureVersionNegotiator.cs
+csharp/src/Http/HttpHandlerFactory.cs
+csharp/src/Lz4Utilities.cs
+csharp/src/PropertyHelper.cs
+csharp/src/Reader/BaseDatabricksReader.cs
+csharp/src/Reader/CloudFetch/Clock.cs
+csharp/src/Reader/CloudFetch/CloudFetchConfiguration.cs
+csharp/src/Reader/CloudFetch/CloudFetchDownloader.cs
+csharp/src/Reader/CloudFetch/CloudFetchDownloadManager.cs
+csharp/src/Reader/CloudFetch/CloudFetchMemoryBufferManager.cs
+csharp/src/Reader/CloudFetch/CloudFetchReader.cs
+csharp/src/Reader/CloudFetch/CloudFetchReaderFactory.cs
+csharp/src/Reader/CloudFetch/CloudFetchResultFetcher.cs
+csharp/src/Reader/CloudFetch/DownloadResult.cs
+csharp/src/Reader/CloudFetch/EndOfResultsGuard.cs
+csharp/src/Reader/CloudFetch/ICloudFetchInterfaces.cs
+csharp/src/Reader/CloudFetch/StatementExecutionResultFetcher.cs
+csharp/src/Reader/CloudFetch/ThriftResultFetcher.cs
+csharp/src/Reader/DatabricksCompositeReader.cs
+csharp/src/Reader/DatabricksOperationStatusPoller.cs
+csharp/src/Reader/DatabricksReader.cs
+csharp/src/Reader/IOperationStatusPoller.cs
+csharp/src/Result/DescTableExtendedResult.cs
+csharp/src/RetryHttpHandler.cs
+csharp/src/StatementExecution/StatementExecutionClient.cs
+csharp/src/StatementExecution/StatementExecutionConnection.cs
+csharp/src/StatementExecution/StatementExecutionModels.cs
+csharp/src/StatementExecution/StatementExecutionStatement.cs
+csharp/src/ThriftErrorMessageHandler.cs
+csharp/src/TracingDelegatingHandler.cs
+csharp/test/E2E/Auth/E2E/CloudFetch/CloudFetchDownloaderTest.cs
+csharp/test/E2E/Auth/E2E/CloudFetch/CloudFetchResultFetcherTest.cs
+csharp/test/E2E/Auth/E2E/CloudFetch/StatementExecutionResultFetcherTest.cs
+csharp/test/E2E/Auth/E2E/StatementExecution/StatementExecutionClientE2ETests.cs
+csharp/test/E2E/Auth/E2E/StatementExecution/StatementExecutionDriverE2ETests.cs
+csharp/test/E2E/Auth/OAuthClientCredentialsProviderTests.cs
+csharp/test/E2E/Auth/TokenExchangeTests.cs
+csharp/test/E2E/ClientTests.cs
+csharp/test/E2E/CloudFetchE2ETest.cs
+csharp/test/E2E/ComplexTypesValueTests.cs
+csharp/test/E2E/DatabricksConnectionTest.cs
+csharp/test/E2E/DatabricksTestConfiguration.cs
+csharp/test/E2E/DatabricksTestEnvironment.cs
+csharp/test/E2E/DateTimeValueTests.cs
+csharp/test/E2E/DriverTests.cs
+csharp/test/E2E/NumericValueTests.cs
+csharp/test/E2E/ServerSidePropertyE2ETest.cs
+csharp/test/E2E/StatementExecution
+csharp/test/E2E/StatementTests.cs
+csharp/test/E2E/StringValueTests.cs
+csharp/test/E2E/TelemetryTests.cs
+csharp/test/Resources/create_reference_table.sql
+csharp/test/Resources/create_table_all_types.sql
+csharp/test/Resources/Databricks.sql
+csharp/test/TracingDelegatingHandlerTest.cs
+csharp/test/Unit/Auth/JwtTokenDecoderTests.cs
+csharp/test/Unit/Auth/MandatoryTokenExchangeDelegatingHandlerTests.cs
+csharp/test/Unit/Auth/TokenExchangeClientTests.cs
+csharp/test/Unit/Auth/TokenRefreshDelegatingHandlerTests.cs
+csharp/test/Unit/DatabricksCompositeReaderUnitTests.cs
+csharp/test/Unit/DatabricksConfigurationTest.cs
+csharp/test/Unit/DatabricksOperationStatusPollerTests.cs
+csharp/test/Unit/DatabricksParametersTests.cs
+csharp/test/Unit/Reader/CloudFetch/StatementExecutionResultFetcherTests.cs
+csharp/test/Unit/Result/DescTableExtendedResultTest.cs
+csharp/test/Unit/RetryHttpHandlerTest.cs
+csharp/test/Unit/StatementExecution/StatementExecutionClientTests.cs
+csharp/test/Unit/StatementExecution/StatementExecutionConnectionAuthTests.cs
+csharp/test/Unit/StatementExecution/StatementExecutionModelsTests.cs
+csharp/test/Unit/ThriftErrorMessageHandlerTest.cs
