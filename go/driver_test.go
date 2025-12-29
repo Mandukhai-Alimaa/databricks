@@ -29,8 +29,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/adbc-drivers/databricks/go/databricks"
 	"github.com/apache/arrow-adbc/go/adbc"
-	databricks "github.com/adbc-drivers/databricks/go/databricks"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/memory"
