@@ -15,7 +15,7 @@
 import re
 from pathlib import Path
 
-from adbc_drivers_validation import model
+from adbc_drivers_validation import model, quirks
 
 
 class DatabricksQuirks(model.DriverQuirks):
@@ -24,7 +24,7 @@ class DatabricksQuirks(model.DriverQuirks):
     driver_name = "ADBC Driver Foundry Driver for Databricks"
     vendor_name = "Databricks"
     vendor_version = re.compile(r"(17\.[0-9]+.*|2025\.[0-9]+)")
-    short_version = "unknown"
+    short_version = "17"
     features = model.DriverFeatures(
         connection_get_table_schema=False,
         connection_set_current_catalog=False,
@@ -80,52 +80,7 @@ class DatabricksQuirks(model.DriverQuirks):
         return f"`{identifier}`"
 
     def split_statement(self, statement: str) -> list[str]:
-        # Databricks doesn't support multi-statement queries, so we must split them properly
-        # Split by semicolon but respect string literals (don't split on semicolons inside quotes)
-        statements = []
-        current_statement = ""
-        in_single_quotes = False
-        i = 0
-
-        while i < len(statement):
-            char = statement[i]
-
-            # Handle backslash escapes inside strings
-            if char == "\\" and in_single_quotes and i + 1 < len(statement):
-                # Add backslash and the next character (e.g., \', \\, \n)
-                current_statement += char + statement[i + 1]
-                i += 2
-                continue
-            elif char == "'" and not in_single_quotes:
-                in_single_quotes = True
-                current_statement += char
-            elif char == "'" and in_single_quotes:
-                # Check if this is an escaped quote ('')
-                if i + 1 < len(statement) and statement[i + 1] == "'":
-                    # This is an escaped quote, add both characters
-                    current_statement += "''"
-                    i += 1  # Skip the next quote
-                else:
-                    # This is the end of the string literal
-                    in_single_quotes = False
-                    current_statement += char
-            elif char == ";" and not in_single_quotes:
-                # This is a statement separator - add current statement without the semicolon
-                cleaned = current_statement.strip()
-                if cleaned:
-                    statements.append(cleaned)
-                current_statement = ""
-            else:
-                current_statement += char
-
-            i += 1
-
-        # Add the last statement if any
-        cleaned = current_statement.strip()
-        if cleaned:
-            statements.append(cleaned)
-
-        return statements
+        return quirks.split_statement(statement, dialect=self.name)
 
 
 QUIRKS = [DatabricksQuirks()]
