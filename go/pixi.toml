@@ -34,4 +34,4 @@ python = ">=3.13.5,<3.14"
 
 [pypi-dependencies]
 adbc-drivers-dev = { git = "https://github.com/adbc-drivers/dev" }
-adbc-drivers-validation = { path = "../../validation", editable = true }
+adbc-drivers-validation = { git = "https://github.com/adbc-drivers/validation" }
