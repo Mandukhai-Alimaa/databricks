@@ -27,21 +27,21 @@ class DatabricksQuirks(model.DriverQuirks):
     short_version = "17"
     features = model.DriverFeatures(
         connection_get_table_schema=False,
-        connection_set_current_catalog=False,
-        connection_set_current_schema=False,
+        connection_set_current_catalog=True,
+        connection_set_current_schema=True,
         connection_transactions=False,
         get_objects_constraints_check=False,
         get_objects_constraints_foreign=False,
         get_objects_constraints_primary=False,
         get_objects_constraints_unique=False,
         statement_bind=False,
-        statement_bulk_ingest=False,
-        statement_bulk_ingest_catalog=False,
-        statement_bulk_ingest_schema=False,
+        statement_bulk_ingest=True,
+        statement_bulk_ingest_catalog=True,
+        statement_bulk_ingest_schema=True,
         statement_bulk_ingest_temporary=False,
         statement_execute_schema=False,
         statement_get_parameter_schema=False,
-        statement_prepare=False,
+        statement_prepare=True,
         statement_rows_affected=True,
         current_catalog="workspace",
         current_schema="default",
@@ -71,6 +71,7 @@ class DatabricksQuirks(model.DriverQuirks):
                 "does not exist" in error_str
                 or "doesn't exist" in error_str
                 or "not found" in error_str
+                or "cannot be found" in error_str
             )
             and table_name.lower() in error_str
         )
