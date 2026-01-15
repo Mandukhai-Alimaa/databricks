@@ -36,6 +36,9 @@ app = Flask(__name__)
 state_lock = threading.Lock()
 enabled_scenarios: Dict[str, bool] = {}
 
+# Call count tracking for trigger_after_count scenarios
+scenario_call_counts: Dict[str, int] = {}
+
 # Call tracking state (thread-safe with lock)
 MAX_CALL_HISTORY = 1000
 call_history: List[Dict[str, Any]] = []
@@ -107,6 +110,81 @@ SCENARIOS = {
         "operation": "CloudFetchDownload",
         "action": "close_connection",
     },
+    # Session Lifecycle Scenarios
+    "invalid_session_handle": {
+        "description": "Server returns invalid session handle error on next ExecuteStatement",
+        "operation": "ExecuteStatement",
+        "action": "return_thrift_error",
+        "error_type": "INVALID_HANDLE",
+        "error_message": "Invalid or expired session handle",
+        # No trigger_after_count needed - test enables scenario after first statement
+    },
+    "session_timeout_premature": {
+        "description": "Session expires before idle timeout",
+        "operation": "ThriftOperation",
+        "action": "return_thrift_error",
+        "error_type": "SESSION_EXPIRED",
+        "error_message": "Session timed out due to inactivity",
+    },
+    "expired_credentials": {
+        "description": "Authentication fails due to expired credentials",
+        "operation": "OpenSession",
+        "action": "return_auth_error",
+        "error_type": "INVALID_AUTHORIZATION_SPECIFICATION",
+        "error_message": "Token has expired",
+    },
+    "network_timeout_open_session": {
+        "description": "Network timeout during OpenSession request",
+        "operation": "OpenSession",
+        "action": "delay",
+        "duration_seconds": 35,
+    },
+    "network_failure_close_session": {
+        "description": "Network failure during CloseSession request",
+        "operation": "CloseSession",
+        "action": "close_connection",
+    },
+    "service_unavailable_503_open_session": {
+        "description": "OpenSession returns 503 Service Unavailable (transient error, driver should retry)",
+        "operation": "OpenSession",
+        "action": "return_error",
+        "error_code": 503,
+        "error_message": "Service Unavailable",
+    },
+    "request_timeout_408_open_session": {
+        "description": "OpenSession returns 408 Request Timeout (transient error, driver should retry)",
+        "operation": "OpenSession",
+        "action": "return_error",
+        "error_code": 408,
+        "error_message": "Request Timeout",
+    },
+    "bad_gateway_502_open_session": {
+        "description": "OpenSession returns 502 Bad Gateway (transient error, driver should retry)",
+        "operation": "OpenSession",
+        "action": "return_error",
+        "error_code": 502,
+        "error_message": "Bad Gateway",
+    },
+    "gateway_timeout_504_open_session": {
+        "description": "OpenSession returns 504 Gateway Timeout (transient error, driver should retry)",
+        "operation": "OpenSession",
+        "action": "return_error",
+        "error_code": 504,
+        "error_message": "Gateway Timeout",
+    },
+    "too_many_requests_429_open_session": {
+        "description": "OpenSession returns 429 Too Many Requests (rate limit, driver should retry with separate timeout)",
+        "operation": "OpenSession",
+        "action": "return_error",
+        "error_code": 429,
+        "error_message": "Too Many Requests",
+    },
+    "long_running_cloud_fetch": {
+        "description": "CloudFetch download takes a long time, simulating slow result fetching (tests keep-alive GetOperationStatus calls)",
+        "operation": "CloudFetchDownload",
+        "action": "delay",
+        "duration_seconds": 15,  # Default 15 seconds, can be overridden via API
+    },
 }
 
 
@@ -161,6 +239,8 @@ def enable_scenario(scenario_name):
         enabled_scenarios[scenario_name] = scenario_config
         # Auto-reset call history when scenario is enabled (new test scenario)
         call_history.clear()
+        # Reset call counts for trigger_after_count scenarios
+        scenario_call_counts.clear()
 
     ctx.log.info(f"[API] Enabled scenario: {scenario_name}, reset call history")
     return jsonify(
@@ -394,6 +474,8 @@ class FailureInjectionAddon:
             await self._handle_cloudfetch_request(flow)
         elif self._is_thrift_request(flow.request):
             self._handle_thrift_request(flow)
+            # Check for session-related failure scenarios
+            await self._handle_thrift_session_scenarios(flow)
 
     def _is_cloudfetch_download(self, request: http.Request) -> bool:
         """Detect if this is a CloudFetch download to cloud storage."""
@@ -493,6 +575,122 @@ class FailureInjectionAddon:
             )
             flow.kill()
             self._disable_scenario(scenario_name)
+
+    async def _handle_thrift_session_scenarios(self, flow: http.HTTPFlow) -> None:
+        """Handle Thrift session-related failure scenarios."""
+        # Decode the Thrift request to determine the operation type
+        if not flow.request.content:
+            return
+
+        decoded = decode_thrift_message(flow.request.content)
+        if not decoded or "error" in decoded:
+            return
+
+        method_name = decoded.get("method", "")
+
+        # Find enabled scenario that matches this Thrift operation
+        with state_lock:
+            enabled_scenario = None
+            for name in enabled_scenarios:
+                scenario_config = enabled_scenarios[name]
+                if scenario_config is not False:
+                    base_config = SCENARIOS.get(name, {})
+                    operation = base_config.get("operation", "")
+
+                    # Check if this scenario matches the operation
+                    if operation == "ThriftOperation" or operation == method_name:
+                        # Check trigger_after_count if specified
+                        trigger_after = base_config.get("trigger_after_count", 0)
+                        if trigger_after > 0:
+                            # Track call count for this scenario + method combination
+                            key = f"{name}:{method_name}"
+                            current_count = scenario_call_counts.get(key, 0)
+                            scenario_call_counts[key] = current_count + 1
+
+                            # Only trigger if we've reached the threshold
+                            if scenario_call_counts[key] <= trigger_after:
+                                continue  # Skip this scenario for now
+
+                        enabled_scenario = (name, scenario_config, base_config)
+                        break
+
+        if not enabled_scenario:
+            return  # No matching scenario enabled
+
+        scenario_name, scenario_config, base_config = enabled_scenario
+        action = base_config.get("action", "")
+
+        ctx.log.info(
+            f"[INJECT] Triggering Thrift scenario: {scenario_name} for method: {method_name}"
+        )
+
+        if action == "return_thrift_error":
+            # Create a Thrift error response
+            # For simplicity, return HTTP 500 with error message
+            # A full implementation would construct proper Thrift error response
+            error_message = base_config.get("error_message", "Thrift operation failed")
+            error_type = base_config.get("error_type", "UNKNOWN_ERROR")
+
+            flow.response = http.Response.make(
+                500,
+                f"Thrift Error [{error_type}]: {error_message}".encode("utf-8"),
+                {"Content-Type": "application/x-thrift"},
+            )
+            self._disable_scenario(scenario_name)
+
+        elif action == "return_auth_error":
+            # Return HTTP 401 for authentication failures (non-retryable)
+            error_message = base_config.get("error_message", "Authentication failed")
+            error_type = base_config.get("error_type", "UNAUTHORIZED")
+
+            flow.response = http.Response.make(
+                401,
+                f"Authentication Error [{error_type}]: {error_message}".encode("utf-8"),
+                {"Content-Type": "application/x-thrift"},
+            )
+            self._disable_scenario(scenario_name)
+
+        elif action == "delay":
+            # Inject delay for slow operations
+            import asyncio
+
+            duration_seconds = base_config.get("duration_seconds", 5)
+            ctx.log.info(
+                f"[INJECT] Delaying {duration_seconds}s for Thrift scenario: {scenario_name}"
+            )
+            self._disable_scenario(scenario_name)
+            await asyncio.sleep(duration_seconds)
+            ctx.log.info(
+                f"[INJECT] Delay complete for Thrift scenario: {scenario_name}"
+            )
+
+        elif action == "return_error":
+            # Return HTTP error with specified code and message
+            error_code = base_config.get("error_code", 500)
+            error_message = base_config.get("error_message", "Internal Server Error")
+            flow.response = http.Response.make(
+                error_code,
+                error_message.encode("utf-8"),
+                {"Content-Type": "text/plain"},
+            )
+            self._disable_scenario(scenario_name)
+
+        elif action == "close_connection":
+            # Kill the connection abruptly
+            flow.response = http.Response.make(
+                500, b"Connection reset by peer", {"Content-Type": "text/plain"}
+            )
+            flow.kill()
+            self._disable_scenario(scenario_name)
+
+        elif action == "track_active_operations":
+            # For CloseSession with active operations
+            # This is a passive tracking scenario - log but don't block
+            ctx.log.info(
+                f"[INJECT] Tracking scenario: {scenario_name} - CloseSession called"
+            )
+            # Don't disable - let the request proceed normally
+            # Tests can verify behavior via call tracking
 
     def _handle_thrift_request(self, flow: http.HTTPFlow) -> None:
         """Handle Thrift requests, log decoded messages, and track call history."""
