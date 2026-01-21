@@ -322,9 +322,21 @@ func (c *connectionImpl) getTablesWithColumns(ctx context.Context, catalog strin
 
 	var queryBuilder strings.Builder
 	queryBuilder.WriteString("SELECT DISTINCT c.TABLE_NAME, c.ordinal_position, c.COLUMN_NAME, c.DATA_TYPE, c.IS_NULLABLE FROM ")
-	queryBuilder.WriteString(quoteIdentifier(catalog))
-	queryBuilder.WriteString(".information_schema.COLUMNS c WHERE c.TABLE_SCHEMA = ")
-	queryBuilder.WriteString(quoteString(schema))
+
+	lowerCatalog := strings.ToLower(catalog)
+	if lowerCatalog == "hive_metastore" || lowerCatalog == "system" {
+		// Hive Metastore and system catalog metadata are only available via the system-level information_schema
+		queryBuilder.WriteString("system.information_schema.COLUMNS c ")
+		queryBuilder.WriteString("WHERE c.table_catalog = ")
+		queryBuilder.WriteString(quoteString(catalog))
+		queryBuilder.WriteString(" AND c.TABLE_SCHEMA = ")
+		queryBuilder.WriteString(quoteString(schema))
+	} else {
+		// Unity Catalog catalogs have their own information_schema
+		queryBuilder.WriteString(quoteIdentifier(catalog))
+		queryBuilder.WriteString(".information_schema.COLUMNS c WHERE c.TABLE_SCHEMA = ")
+		queryBuilder.WriteString(quoteString(schema))
+	}
 
 	if tableFilter != nil {
 		queryBuilder.WriteString(" AND c.TABLE_NAME LIKE ")
