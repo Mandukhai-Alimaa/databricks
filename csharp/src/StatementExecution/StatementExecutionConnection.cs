@@ -262,9 +262,17 @@ namespace AdbcDrivers.Databricks.StatementExecution
             int rateLimitRetryTimeout = PropertyHelper.GetIntPropertyWithValidation(properties, DatabricksParameters.RateLimitRetryTimeout, DatabricksConstants.DefaultRateLimitRetryTimeout);
             int timeoutMinutes = PropertyHelper.GetPositiveIntPropertyWithValidation(properties, DatabricksParameters.CloudFetchTimeoutMinutes, DatabricksConstants.DefaultCloudFetchTimeoutMinutes);
 
+            // SEA inline results are base64-of-LZ4-Arrow wrapped in JSON; the API proxy gzips that
+            // JSON envelope, which is wasteful (double compression on already-compressed data) and
+            // ~40ms slower in-region for multi-MB results. Default to not requesting gzip on the SEA
+            // statements client; a bandwidth-constrained client can re-enable it. Scoped to this
+            // client only — CloudFetch (S3) and the Thrift path are unaffected.
+            bool seaResponseCompression = PropertyHelper.GetBooleanPropertyWithValidation(properties, DatabricksParameters.SeaResponseCompressionEnabled, false);
+
             var config = new HttpHandlerFactory.HandlerConfig
             {
-                BaseHandler = HttpClientFactory.CreateHandler(properties),
+                BaseHandler = HttpClientFactory.CreateHandler(properties, seaResponseCompression),
+                // OAuth token responses are tiny, so the auth client keeps default compression.
                 BaseAuthHandler = HttpClientFactory.CreateHandler(properties),
                 Properties = properties,
                 Host = GetHost(properties),
@@ -292,6 +300,11 @@ namespace AdbcDrivers.Databricks.StatementExecution
             // Set user agent
             string userAgent = GetUserAgent(properties);
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+
+            // A request with no Accept-Encoding lets the server pick any coding (RFC 9110 §12.5.3),
+            // and the handler above won't decompress, so ask for an uncompressed body explicitly.
+            if (!seaResponseCompression)
+                httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new System.Net.Http.Headers.StringWithQualityHeaderValue("identity"));
 
             if (!string.IsNullOrEmpty(_orgId))
                 httpClient.DefaultRequestHeaders.TryAddWithoutValidation(DatabricksConstants.OrgIdHeader, _orgId);
